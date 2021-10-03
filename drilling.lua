@@ -71,12 +71,15 @@ Drilling.HandleControls = function()
 
   local last_temp = Drilling.DrillTemp
   if last_pos < Drilling.DrillPos then
+    RequestAnimDict('anim@heists@fleeca_bank@drilling')
     if Drilling.DrillSpeed > 0.4 then
       Drilling.DrillTemp = math.min(1.0,Drilling.DrillTemp + ((0.05 * GetFrameTime()) *  (Drilling.DrillSpeed * 10)))
       Scaleforms.PopFloat(Drilling.Scaleform,"SET_DRILL_POSITION",Drilling.DrillPos)
+      TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
     else
       if Drilling.DrillPos < 0.1 or Drilling.DrillPos < Drilling.HoleDepth then
         Scaleforms.PopFloat(Drilling.Scaleform,"SET_DRILL_POSITION",Drilling.DrillPos)
+        TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_idle", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
       else
         Drilling.DrillPos = last_pos
         Drilling.DrillTemp = math.min(1.0,Drilling.DrillTemp + (0.01 * GetFrameTime()))
@@ -101,9 +104,11 @@ Drilling.HandleControls = function()
   end
 
   if Drilling.DrillTemp >= 1.0 then
+    TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_fail", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
     Drilling.Result = false
     Drilling.Active = false
   elseif Drilling.DrillPos >= 1.0 then
+    TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_end", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
     Drilling.Result = true
     Drilling.Active = false
   end
