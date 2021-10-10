@@ -2,6 +2,33 @@ Scaleforms = exports["meta_libs"]:Scaleforms()
 
 Drilling = {}
 
+LockboxAnimation = {
+  ['objects'] = {},
+  ['scenes'] = {},
+}
+
+function loadAnimDict(dict)
+  while not HasAnimDictLoaded(dict) do
+      RequestAnimDict(dict)
+      Citizen.Wait(0)
+  end
+end
+
+function loadModel(model)
+  if type(model) == 'number' then
+      model = model
+  else
+      model = GetHashKey(model)
+  end
+  while not HasModelLoaded(model) do
+      RequestModel(model)
+      Citizen.Wait(0)
+  end
+end
+
+local cam = nil
+local pedCo, pedRotation = nil
+
 Drilling.DisabledControls = {30,31,32,33,34,35}
 
 Drilling.Start = function(callback)
@@ -30,6 +57,34 @@ Drilling.Init = function()
   Scaleforms.PopFloat(Drilling.Scaleform,"SET_DRILL_POSITION",  0.0)
   Scaleforms.PopFloat(Drilling.Scaleform,"SET_TEMPERATURE",     0.0)
   Scaleforms.PopFloat(Drilling.Scaleform,"SET_HOLE_DEPTH",      0.0)
+
+  ped = PlayerPedId()
+  pedCo, pedRotation = GetEntityCoords(ped), vector3(0.0, 0.0, 0.0)
+  local animDict = 'anim_heist@hs3f@ig10_lockbox_drill@pattern_01@lockbox_01@male@'
+  loadAnimDict(animDict)
+
+
+  for k, v in pairs(Lockbox['objects']) do
+    loadModel(v)
+    LockboxAnimation['objects'][k] = CreateObject(GetHashKey(v), pedCo, 1, 0, 0)
+  end
+
+  cam = CreateCam("DEFAULT_ANIMATED_CAMERA", true)
+  SetCamActive(cam, true)
+  RenderScriptCams(true, 0, 3000, 1, 0)
+
+  safe = GetClosestObjectOfType(pedCo, 1.5, -1375589668)
+    for i = 1, #Lockbox['animations'] do   
+        LockboxAnimation['scenes'][i] = NetworkCreateSynchronisedScene(-1221.3, -916.0, 10.43, GetEntityRotation(safe), 2, true, false, 1065353216, 0, 1.3)
+        NetworkAddPedToSynchronisedScene(ped, LockboxAnimation['scenes'][i], animDict, Lockbox['animations'][i][1], 4.0, -4.0, 1033, 0, 1000.0, 0)
+        NetworkAddEntityToSynchronisedScene(LockboxAnimation['objects'][1], LockboxAnimation['scenes'][i], animDict, Lockbox['animations'][i][3], 1.0, -1.0, 1148846080)
+        NetworkAddEntityToSynchronisedScene(LockboxAnimation['objects'][2], LockboxAnimation['scenes'][i], animDict, Lockbox['animations'][i][4], 1.0, -1.0, 1148846080)
+    end
+
+  NetworkStartSynchronisedScene(LockboxAnimation['scenes']['1'])
+  PlayCamAnim(cam, 'enter_cam', 'anim_heist@hs3f@ig10_lockbox_drill@pattern_01@lockbox_01@male@', pedCo.x, pedCo.y, pedCo.z - 1.0, pedRotation, 0, 2)
+  Wait(GetAnimDuration(animDict, 'enter') * 1000)
+
 end
 
 Drilling.Update = function(callback)
@@ -75,11 +130,12 @@ Drilling.HandleControls = function()
     if Drilling.DrillSpeed > 0.4 then
       Drilling.DrillTemp = math.min(1.0,Drilling.DrillTemp + ((0.05 * GetFrameTime()) *  (Drilling.DrillSpeed * 10)))
       Scaleforms.PopFloat(Drilling.Scaleform,"SET_DRILL_POSITION",Drilling.DrillPos)
-      TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
+      NetworkStartSynchronisedScene(LockboxAnimation['scenes']['2'])
+      PlayCamAnim(cam, 'action_cam', 'anim_heist@hs3f@ig10_lockbox_drill@pattern_01@lockbox_01@male@', pedCo.x, pedCo.y, pedCo.z - 1.0, pedRotation, 0, 2)
     else
       if Drilling.DrillPos < 0.1 or Drilling.DrillPos < Drilling.HoleDepth then
         Scaleforms.PopFloat(Drilling.Scaleform,"SET_DRILL_POSITION",Drilling.DrillPos)
-        TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_idle", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
+        NetworkStartSynchronisedScene(LockboxAnimation['scenes']['1'])
       else
         Drilling.DrillPos = last_pos
         Drilling.DrillTemp = math.min(1.0,Drilling.DrillTemp + (0.01 * GetFrameTime()))
@@ -104,13 +160,13 @@ Drilling.HandleControls = function()
   end
 
   if Drilling.DrillTemp >= 1.0 then
-    TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_fail", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
     Drilling.Result = false
     Drilling.Active = false
+    endDrilling()
   elseif Drilling.DrillPos >= 1.0 then
-    TaskPlayAnim(PlayerPedId(), "anim@heists@fleeca_bank@drilling", "drill_right_end", 1.5, 1.5, -1, 1, 5.0, 0, 0, 0)
     Drilling.Result = true
     Drilling.Active = false
+    endDrilling()
   end
 
   Drilling.HoleDepth = (Drilling.DrillPos > Drilling.HoleDepth and Drilling.DrillPos or Drilling.HoleDepth)
@@ -127,5 +183,14 @@ Drilling.EnableControls = function()
     DisableControlAction(0,control,true)
   end
 end
+
+function endDrilling()
+  ClearPedTasks(ped)
+  RenderScriptCams(false, false, 0, 1, 0)
+  DestroyCam(cam, false)
+  for k, v in pairs(LockboxAnimation['objects']) do
+      DeleteObject(v)
+  end 
+end 
 
 AddEventHandler("Drilling:Start",Drilling.Start)
