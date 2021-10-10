@@ -20,4 +20,4 @@ end)
 
 # Preview Image
 - Note: Image from GTAV.
-![Image of Drilling](https://www.gadgetreview.com/wp-content/uploads/2016/07/the_fleeca_job_3.jpg)
+![Image of Drilling](https://i.gyazo.com/8dc821883ef86c69c9edd483b8281210.jpg)
